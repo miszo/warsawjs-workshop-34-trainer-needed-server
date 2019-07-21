@@ -1,0 +1,17 @@
+{
+  "name": "warsawjs-workshop-34-trainer-needed-server",
+  "description": "Server part of an application that allows students ask a trainer for help during a WarsawJS workshop.",
+  "version": "1.0.0",
+  "license": "MIT",
+  "scripts": {
+    "start-server": "nodemon server --exec 'eslint . && node'"
+  },
+  "devDependencies": {
+    "eslint": "^6.0.1",
+    "nodemon": "^1.19.1"
+  },
+  "dependencies": {
+    "lodash": "^4.17.14",
+    "ws": "^7.1.0"
+  }
+}
