@@ -2,6 +2,11 @@ const WebSocket = require('ws');
 
 const WEB_SOCKET_PORT = 3333;
 
+const ROLES = {
+  TRAINER: 'trainer',
+  STUDENT: 'student',
+};
+
 const webSocketServer = new WebSocket.Server({
   port: WEB_SOCKET_PORT,
 });
@@ -52,7 +57,14 @@ webSocketServer.on('connection', function(webSocket) {
   });
 
   webSocket.on('close', function() {
-    console.log('client disconnected');
+    switch (connectedPerson.role) {
+      case ROLES.TRAINER:
+        console.log('trainer disconnected');
+        break;
+      case ROLES.STUDENT:
+        console.log(`student (${connectedPerson.identification}) disconnected`);
+        break;
+    }
   });
 });
 
