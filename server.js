@@ -41,6 +41,14 @@ function handleStudentRequestingHelp(student) {
   }
 }
 
+function handleStudentReassignment(student) {
+  if (freeTrainers.length > 0) {
+    assignFirstFreeTrainerToStudent(student);
+  } else {
+    putStudentAtTheBeginningOfWaitingQueue(student);
+  }
+}
+
 function putStudentAtTheEndWaitingQueue(student) {
   studentsWaitingForHelp.push(student);
   student.webSocket.send(JSON.stringify({ type: 'position-in-waiting-queue', positionInWaitingQueue: studentsWaitingForHelp.length }));
@@ -49,6 +57,11 @@ function putStudentAtTheEndWaitingQueue(student) {
 function assignFirstFreeTrainerToStudent(student) {
   const trainer = freeTrainers.shift();
   assignTrainerToStudent(trainer, student);
+}
+
+function putStudentAtTheBeginningOfWaitingQueue(student) {
+  studentsWaitingForHelp.unshift(student);
+  notifyStudentsAboutTheirPositionsInWaitingQueue();
 }
 
 function assignTrainerToStudent(trainer, student) {
@@ -62,6 +75,14 @@ function notifyStudentsAboutTheirPositionsInWaitingQueue() {
   studentsWaitingForHelp.forEach(function(student, index) {
     student.webSocket.send(JSON.stringify({ type: 'position-in-waiting-queue', positionInWaitingQueue: index + 1 }));
   });
+}
+
+function handleTrainerLeaving(trainer) {
+  if (trainer.student) {
+    handleStudentReassignment(trainer.student);
+  } else {
+    pull(freeTrainers, trainer);
+  }
 }
 
 function printCurrentState() {
@@ -138,7 +159,7 @@ webSocketServer.on('connection', function(webSocket) {
   webSocket.on('close', function() {
     switch (connectedPerson.role) {
       case ROLES.TRAINER:
-        pull(freeTrainers, connectedPerson);
+        handleTrainerLeaving(connectedPerson);
         console.log('trainer disconnected');
         break;
       case ROLES.STUDENT:
