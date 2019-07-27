@@ -9,6 +9,7 @@ const ROLES = {
 };
 
 const freeTrainers = [];
+const studentsWaitingForHelp = [];
 
 const webSocketServer = new WebSocket.Server({
   port: WEB_SOCKET_PORT,
@@ -21,7 +22,14 @@ function putTrainerOnFreeTrainerList(trainer) {
 function handleStudentRequestingHelp(student) {
   if (freeTrainers.length > 0) {
     assignFirstFreeTrainerToStudent(student);
+  } else {
+    putStudentAtTheEndWaitingQueue(student);
   }
+}
+
+function putStudentAtTheEndWaitingQueue(student) {
+  studentsWaitingForHelp.push(student);
+  student.webSocket.send(JSON.stringify({ type: 'position-in-waiting-queue', positionInWaitingQueue: studentsWaitingForHelp.length }));
 }
 
 function assignFirstFreeTrainerToStudent(student) {
@@ -38,6 +46,7 @@ function assignTrainerToStudent(trainer, student) {
 
 function printCurrentState() {
   console.log('number of free trainers:', freeTrainers.length);
+  console.log('number of students waiting for help', studentsWaitingForHelp.length);
 }
 
 webSocketServer.on('connection', function(webSocket) {
