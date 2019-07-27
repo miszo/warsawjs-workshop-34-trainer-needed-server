@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "lodash": "^4.17.14",
+    "socket.io": "^2.2.0",
     "ws": "^7.1.0"
   }
 }
