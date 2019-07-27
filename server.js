@@ -1,4 +1,5 @@
 const WebSocket = require('ws');
+const { pull } = require('lodash');
 
 const WEB_SOCKET_PORT = 3333;
 
@@ -69,12 +70,15 @@ webSocketServer.on('connection', function(webSocket) {
   webSocket.on('close', function() {
     switch (connectedPerson.role) {
       case ROLES.TRAINER:
+        pull(freeTrainers, connectedPerson);
         console.log('trainer disconnected');
         break;
       case ROLES.STUDENT:
         console.log(`student (${connectedPerson.identification}) disconnected`);
         break;
     }
+
+    printCurrentState();
   });
 });
 
