@@ -17,6 +17,10 @@ function putTrainerOnFreeTrainerList(trainer) {
   freeTrainers.push(trainer);
 }
 
+function printCurrentState() {
+  console.log('number of free trainers:', freeTrainers.length);
+}
+
 webSocketServer.on('connection', function(webSocket) {
   console.log('client connected');
 
