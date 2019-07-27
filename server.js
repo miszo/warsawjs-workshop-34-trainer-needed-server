@@ -85,6 +85,18 @@ function handleTrainerLeaving(trainer) {
   }
 }
 
+function handleStudentLeaving(student) {
+  if (student.trainer) {
+    const trainer = student.trainer;
+    trainer.student = null;
+    trainer.webSocket.send(JSON.stringify({ type: 'help-request-cancellation' }));
+    handleFreeTrainer(trainer);
+  } else if (studentsWaitingForHelp.includes(student)) {
+    pull(studentsWaitingForHelp, student);
+    notifyStudentsAboutTheirPositionsInWaitingQueue();
+  }
+}
+
 function printCurrentState() {
   console.log('number of free trainers:', freeTrainers.length);
   console.log('number of students waiting for help', studentsWaitingForHelp.length);
@@ -163,6 +175,7 @@ webSocketServer.on('connection', function(webSocket) {
         console.log('trainer disconnected');
         break;
       case ROLES.STUDENT:
+        handleStudentLeaving(connectedPerson);
         console.log(`student (${connectedPerson.identification}) disconnected`);
         break;
     }
