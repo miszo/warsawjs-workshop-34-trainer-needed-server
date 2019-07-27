@@ -15,6 +15,20 @@ const webSocketServer = new WebSocket.Server({
   port: WEB_SOCKET_PORT,
 });
 
+function handleFreeTrainer(trainer) {
+  if (studentsWaitingForHelp.length > 0) {
+    assignTrainerToFirstWaitingStudent(trainer);
+  } else {
+    putTrainerOnFreeTrainerList(trainer);
+  }
+}
+
+function assignTrainerToFirstWaitingStudent(trainer) {
+  const student = studentsWaitingForHelp.shift();
+  assignTrainerToStudent(trainer, student);
+  notifyStudentsAboutTheirPositionsInWaitingQueue();
+}
+
 function putTrainerOnFreeTrainerList(trainer) {
   freeTrainers.push(trainer);
 }
@@ -44,6 +58,12 @@ function assignTrainerToStudent(trainer, student) {
   student.webSocket.send(JSON.stringify({ type: 'trainer-assigned' }));
 }
 
+function notifyStudentsAboutTheirPositionsInWaitingQueue() {
+  studentsWaitingForHelp.forEach(function(student, index) {
+    student.webSocket.send(JSON.stringify({ type: 'position-in-waiting-queue', positionInWaitingQueue: index + 1 }));
+  });
+}
+
 function printCurrentState() {
   console.log('number of free trainers:', freeTrainers.length);
   console.log('number of students waiting for help', studentsWaitingForHelp.length);
@@ -67,7 +87,7 @@ webSocketServer.on('connection', function(webSocket) {
         case ROLES.TRAINER:
           messagesHandler = trainerMessagesHandler;
           connectedPerson.student = null;
-          putTrainerOnFreeTrainerList(connectedPerson);
+          handleFreeTrainer(connectedPerson);
           break;
         case ROLES.STUDENT:
           messagesHandler = studentMessagesHandler;
@@ -94,10 +114,10 @@ webSocketServer.on('connection', function(webSocket) {
       trainer.student = null;
       student.trainer = null;
 
-      putTrainerOnFreeTrainerList(trainer);
-
       trainer.webSocket.send(JSON.stringify({ type: 'help-provided' }));
       student.webSocket.send(JSON.stringify({ type: 'help-provided' }));
+
+      handleFreeTrainer(trainer);
 
       printCurrentState();
     },
