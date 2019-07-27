@@ -7,9 +7,15 @@ const ROLES = {
   STUDENT: 'student',
 };
 
+const freeTrainers = [];
+
 const webSocketServer = new WebSocket.Server({
   port: WEB_SOCKET_PORT,
 });
+
+function putTrainerOnFreeTrainerList(trainer) {
+  freeTrainers.push(trainer);
+}
 
 webSocketServer.on('connection', function(webSocket) {
   console.log('client connected');
