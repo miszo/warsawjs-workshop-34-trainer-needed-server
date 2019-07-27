@@ -1,4 +1,4 @@
-const WebSocket = require('ws');
+const socketIO = require('socket.io');
 const { pull } = require('lodash');
 
 const WEB_SOCKET_PORT = 3333;
@@ -11,9 +11,7 @@ const ROLES = {
 const freeTrainers = [];
 const studentsWaitingForHelp = [];
 
-const webSocketServer = new WebSocket.Server({
-  port: WEB_SOCKET_PORT,
-});
+const webSocketServer = socketIO(WEB_SOCKET_PORT);
 
 function handleFreeTrainer(trainer) {
   if (studentsWaitingForHelp.length > 0) {
@@ -51,7 +49,7 @@ function handleStudentReassignment(student) {
 
 function putStudentAtTheEndWaitingQueue(student) {
   studentsWaitingForHelp.push(student);
-  student.webSocket.send(JSON.stringify({ type: 'position-in-waiting-queue', positionInWaitingQueue: studentsWaitingForHelp.length }));
+  student.webSocket.emit('position-in-waiting-queue', { positionInWaitingQueue: studentsWaitingForHelp.length });
 }
 
 function assignFirstFreeTrainerToStudent(student) {
@@ -67,13 +65,13 @@ function putStudentAtTheBeginningOfWaitingQueue(student) {
 function assignTrainerToStudent(trainer, student) {
   trainer.student = student;
   student.trainer = trainer;
-  trainer.webSocket.send(JSON.stringify({ type: 'help-request', studentIdentification: student.identification }));
-  student.webSocket.send(JSON.stringify({ type: 'trainer-assigned' }));
+  trainer.webSocket.emit('help-request', { studentIdentification: student.identification });
+  student.webSocket.emit('trainer-assigned');
 }
 
 function notifyStudentsAboutTheirPositionsInWaitingQueue() {
   studentsWaitingForHelp.forEach(function(student, index) {
-    student.webSocket.send(JSON.stringify({ type: 'position-in-waiting-queue', positionInWaitingQueue: index + 1 }));
+    student.webSocket.emit('position-in-waiting-queue', { positionInWaitingQueue: index + 1 });
   });
 }
 
@@ -89,7 +87,7 @@ function handleStudentLeaving(student) {
   if (student.trainer) {
     const trainer = student.trainer;
     trainer.student = null;
-    trainer.webSocket.send(JSON.stringify({ type: 'help-request-cancellation' }));
+    trainer.webSocket.emit('help-request-cancellation');
     handleFreeTrainer(trainer);
   } else if (studentsWaitingForHelp.includes(student)) {
     pull(studentsWaitingForHelp, student);
@@ -111,64 +109,44 @@ webSocketServer.on('connection', function(webSocket) {
     identification: null,
   };
 
-  const freshConnectionMessagesHandler = {
-    'identification': function(message) {
-      connectedPerson.role           = message.role;
-      connectedPerson.identification = message.identification;
+  webSocket.on('identification', function(message) {
+    connectedPerson.role           = message.role;
+    connectedPerson.identification = message.identification;
 
-      switch (message.role) {
-        case ROLES.TRAINER:
-          messagesHandler = trainerMessagesHandler;
-          connectedPerson.student = null;
-          handleFreeTrainer(connectedPerson);
-          break;
-        case ROLES.STUDENT:
-          messagesHandler = studentMessagesHandler;
-          connectedPerson.trainer = null;
-          break;
-      }
-
-      printCurrentState();
-    },
-  };
-
-  const studentMessagesHandler = {
-    'help-request': function() {
-      handleStudentRequestingHelp(connectedPerson);
-      printCurrentState();
+    switch (message.role) {
+      case ROLES.TRAINER:
+        connectedPerson.student = null;
+        handleFreeTrainer(connectedPerson);
+        break;
+      case ROLES.STUDENT:
+        connectedPerson.trainer = null;
+        break;
     }
-  };
 
-  const trainerMessagesHandler = {
-    'help-provided': function() {
-      const trainer = connectedPerson;
-      const student = trainer.student;
-
-      trainer.student = null;
-      student.trainer = null;
-
-      trainer.webSocket.send(JSON.stringify({ type: 'help-provided' }));
-      student.webSocket.send(JSON.stringify({ type: 'help-provided' }));
-
-      handleFreeTrainer(trainer);
-
-      printCurrentState();
-    },
-  };
-
-  let messagesHandler = freshConnectionMessagesHandler;
-
-  webSocket.on('message', function(json) {
-    const message = JSON.parse(json);
-    console.log('received message:', message);
-
-    const messageHandler = messagesHandler[message.type];
-    if (messageHandler) {
-      messageHandler(message);
-    }
+    printCurrentState();
   });
 
-  webSocket.on('close', function() {
+  webSocket.on('help-request', function() {
+    handleStudentRequestingHelp(connectedPerson);
+    printCurrentState();
+  });
+
+  webSocket.on('help-provided', function() {
+    const trainer = connectedPerson;
+    const student = trainer.student;
+
+    trainer.student = null;
+    student.trainer = null;
+
+    trainer.webSocket.emit('help-provided');
+    student.webSocket.emit('help-provided');
+
+    handleFreeTrainer(trainer);
+
+    printCurrentState();
+  });
+
+  webSocket.on('disconnect', function() {
     switch (connectedPerson.role) {
       case ROLES.TRAINER:
         handleTrainerLeaving(connectedPerson);
