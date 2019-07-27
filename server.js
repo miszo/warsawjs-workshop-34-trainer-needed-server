@@ -9,6 +9,11 @@ const webSocketServer = new WebSocket.Server({
 webSocketServer.on('connection', function(webSocket) {
   console.log('client connected');
 
+  webSocket.on('message', function(json) {
+    const message = JSON.parse(json);
+    console.log('received message:', message);
+  });
+
   webSocket.on('close', function() {
     console.log('client disconnected');
   });
