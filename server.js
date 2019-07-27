@@ -87,6 +87,20 @@ webSocketServer.on('connection', function(webSocket) {
   };
 
   const trainerMessagesHandler = {
+    'help-provided': function() {
+      const trainer = connectedPerson;
+      const student = trainer.student;
+
+      trainer.student = null;
+      student.trainer = null;
+
+      putTrainerOnFreeTrainerList(trainer);
+
+      trainer.webSocket.send(JSON.stringify({ type: 'help-provided' }));
+      student.webSocket.send(JSON.stringify({ type: 'help-provided' }));
+
+      printCurrentState();
+    },
   };
 
   let messagesHandler = freshConnectionMessagesHandler;
