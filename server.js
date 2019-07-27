@@ -18,6 +18,24 @@ function putTrainerOnFreeTrainerList(trainer) {
   freeTrainers.push(trainer);
 }
 
+function handleStudentRequestingHelp(student) {
+  if (freeTrainers.length > 0) {
+    assignFirstFreeTrainerToStudent(student);
+  }
+}
+
+function assignFirstFreeTrainerToStudent(student) {
+  const trainer = freeTrainers.shift();
+  assignTrainerToStudent(trainer, student);
+}
+
+function assignTrainerToStudent(trainer, student) {
+  trainer.student = student;
+  student.trainer = trainer;
+  trainer.webSocket.send(JSON.stringify({ type: 'help-request', studentIdentification: student.identification }));
+  student.webSocket.send(JSON.stringify({ type: 'trainer-assigned' }));
+}
+
 function printCurrentState() {
   console.log('number of free trainers:', freeTrainers.length);
 }
@@ -26,6 +44,7 @@ webSocketServer.on('connection', function(webSocket) {
   console.log('client connected');
 
   const connectedPerson = {
+    webSocket,
     role: null,
     identification: null,
   };
@@ -38,10 +57,12 @@ webSocketServer.on('connection', function(webSocket) {
       switch (message.role) {
         case ROLES.TRAINER:
           messagesHandler = trainerMessagesHandler;
+          connectedPerson.student = null;
           putTrainerOnFreeTrainerList(connectedPerson);
           break;
         case ROLES.STUDENT:
           messagesHandler = studentMessagesHandler;
+          connectedPerson.trainer = null;
           break;
       }
 
@@ -50,6 +71,10 @@ webSocketServer.on('connection', function(webSocket) {
   };
 
   const studentMessagesHandler = {
+    'help-request': function() {
+      handleStudentRequestingHelp(connectedPerson);
+      printCurrentState();
+    }
   };
 
   const trainerMessagesHandler = {
